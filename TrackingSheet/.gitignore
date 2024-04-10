@@ -1,0 +1,9 @@
+# credentials for my app
+app/tokens
+app/src/main/resources/*
+
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
