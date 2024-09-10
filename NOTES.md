@@ -2,6 +2,16 @@
 
 My personal things to make job searching on the web easier.
 
+
+## Goals
+1. Take incoming emails from my gmail on kdillo893@gmail.com and check for
+"applied" or "application", filter that data for
+  * "title", "Date", "Accept/Reject/Applied" etc, "company", "location", "link" for how to view posting and process...
+2. Post to my "JobSearch" google sheet on the "2024 Searches" page, appending rows at the bottom with above data.
+  * testing phase would just supply current time and a counter for some row with garbage data.
+3. link those pieces together and have a cronjob on my Raspberry Pi to pull, filter, and append for my sheet.
+  * (alternative is just a hook for received email filter, would need to have connection logic)
+
 ## Problems with job searching
 There are a couple problems with the current job board environment that I've
 become familiar with over the past several months.
