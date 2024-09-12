@@ -3,6 +3,15 @@
 My personal things to make job searching on the web easier.
 
 
+Currently only have something to add row to my JobSearches tracking sheet on
+Google Sheets. In process of creating a pipeline to parse "my applications" and 
+send those new rows to my spreadsheet.
+
+Later would have a mechanism for querying if that title and posting matches an existing
+row and update the status of that row in my spreadsheet.
+
+This would probably be much easier as a database and some custom UI instead...
+
 ## Goals
 1. Take incoming emails from my gmail on kdillo893@gmail.com and check for
 "applied" or "application", filter that data for

@@ -10,13 +10,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -30,18 +28,16 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.sheets.v4.Sheets;
-import com.google.api.services.sheets.v4.SheetsRequest;
-import com.google.api.services.sheets.v4.SheetsRequestInitializer;
 import com.google.api.services.sheets.v4.Sheets.Spreadsheets.Values.Append;
 import com.google.api.services.sheets.v4.SheetsScopes;
 import com.google.api.services.sheets.v4.model.AppendValuesResponse;
-import com.google.api.services.sheets.v4.model.SheetProperties;
 import com.google.api.services.sheets.v4.model.ValueRange;
 
 public class SheetsQuickstart {
     private static final String APPLICATION_NAME = "Job Search Sheet Sync";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy");
 
     /**
      * Global instance of the scopes required by this quickstart.
@@ -100,6 +96,8 @@ public class SheetsQuickstart {
      */
     public static void main(String... args) throws IOException, GeneralSecurityException {
 
+        //email listener? either that or I have this compiled and send to the program a string with lines, each being a new row for the tracking sheet...
+
         // Build a new authorized API client service.
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
@@ -116,8 +114,8 @@ public class SheetsQuickstart {
         row1.add("TestJob");
         row1.add("TestCompany");
         row1.add("Chicago, IL");
-        row1.add(new Date().toString());
-        row1.add(new Date().toString());
+        row1.add(DATE_FORMAT.format(new Date()).toString());
+        row1.add(DATE_FORMAT.format(new Date()).toString());
         row1.add("Notes here");
 
         appendRowToJobSearches(HTTP_TRANSPORT, googleCreds, spreadsheetId, row1);
@@ -187,6 +185,7 @@ public class SheetsQuickstart {
 
     /** todo: I want to try making auth connection without the google library */
     public static void rawAPIUpdateSheet(Json query) throws GeneralSecurityException, IOException {
+        throw new UnsupportedOperationException("raw api update sheet not supported");
 
     }
 }
