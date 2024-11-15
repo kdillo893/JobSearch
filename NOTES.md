@@ -12,14 +12,51 @@ row and update the status of that row in my spreadsheet.
 
 This would probably be much easier as a database and some custom UI instead...
 
+Researching, found "competitive" solution in "Simplify":
+[Simplify: Job Searching and Tracking](https://simplify.jobs/)
+
 ## Goals
-1. Take incoming emails from my gmail on kdillo893@gmail.com and check for
-"applied" or "application", filter that data for
+0. Resume Tailoring:
+  * Have an info-base of things I would put on the resume, select subsets depending on match to JD (keywords 100% include, rough match include above certain thresholds, etc)
+1. Take information from applications (browser extension or email responses specifically from career sites) 
   * "title", "Date", "Accept/Reject/Applied" etc, "company", "location", "link" for how to view posting and process...
 2. Post to my "JobSearch" google sheet on the "2024 Searches" page, appending rows at the bottom with above data.
   * testing phase would just supply current time and a counter for some row with garbage data.
 3. link those pieces together and have a cronjob on my Raspberry Pi to pull, filter, and append for my sheet.
   * (alternative is just a hook for received email filter, would need to have connection logic)
+
+### 0. Resume Tailoring:
+Many sites have this as a paid option. I can probably do this myself after looking into the structure of .docx, and I could export that to .pdf using other software.
+1. Info base of "Me" for resume
+  * SQLite file, tables for different sections
+2. "ease of editing" desktop ui for this database:
+  * Graphics APIs (OpenGL, Mesa, GLES, GLX/WGL, EGL/GLUT, fglrx/Catalyst)
+  * DRI/DRM (Direct Rendering Infrastructure/Manager)
+  * X Window System
+  * Cairo/Pixman
+  * Compositor
+  * Wayland
+  * Qt
+  * Gtk = GIMP Toolkit
+  * .Net stuff for windows... MAUI
+
+### 1. "Listening" for my applications
+What's the most effective way to do this?
+1. Browser extension
+  * would need to tune this for sites...
+  * would only be available on machines I install the extension...
+  * maintaining would suck.
+  * only have intro knowledge for chrome extensions, would need to do more for FF...
+  * not quick to implement.
+2. Email parsing
+  * What if an application doesn't send an email?
+  * Could be VERY scary for security if this starts targeting emails I don't want...
+3. Selenium script to parse information from the actual job board on a regular schedule
+  * requires consistent internet connection for tool to work.
+  * Definitely uses too much excess bandwidth compared to other ways
+    * Could do something crazy like block CDNs and CSS so that images don't load
+    and content is mostly static... every fucking web thing runs on JavaScript
+    so I can't really block that to reduce bandwidth
 
 ## Problems with job searching
 There are a couple problems with the current job board environment that I've

@@ -56,27 +56,12 @@ public class SheetsQuickstart {
     private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT)
             throws IOException {
         // Load client secrets.
-        // InputStream in = new FileInputStream(CREDENTIALS_FILE_PATH);
         InputStream in = SheetsQuickstart.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
         if (in == null) {
             throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
         }
 
         System.out.println("credentials found; " + CREDENTIALS_FILE_PATH);
-
-        // //lets test this by reading the creds...
-        // byte[] bbuff = new byte[1024];
-        // int len = in.read(bbuff);
-        //
-        // while (len != -1) {
-        // System.out.write(bbuff, 0, len);
-        // len = in.read(bbuff);
-        // }
-        // System.out.println();
-        //
-        // in.close();
-        //
-        // in = SheetsQuickstart.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
 
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
