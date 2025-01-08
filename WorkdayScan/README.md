@@ -24,12 +24,11 @@ active/inactive role tabs, populate output file by appending the information con
 * For selenium page nav "mock", copying the HTML and button js, add to 
     /etc/hosts that has that domain subset redirect to localhost.
 ```
-"Can open url at \[ns\].\[wd#\].workdayjobs.com"
+"Can open url at \[ns\].\[wd#\].workdayjobs.com" - yes, need "option provided"
 "Navigate to Login"
 "Enter login information and click login/Submit"
 "After login, navigate to Candidate Home"
-"On Candidate Home, read rows on Active tab"
-"On Candidate Home, click Inactive tab and read rows"
+"On Candidate Home, read rows on Active tab and Inactive tab (all are visible)"
 ```
 #### Creds 
 ```
