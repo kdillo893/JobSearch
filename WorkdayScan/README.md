@@ -40,6 +40,39 @@ Reaches:
 "
 ```
 
+### How am I saving things?
+Put the read information into a sqlite file. The pkey combo... not sure, need to think about what's there:
+
+Tables that I'm thinking about:
+
+companies
+| ColumnName | Type | Nullable | Key/Relation | Added info |
+| --------------- | --------------- | --------------- | -- | |
+| company_id | long | NOT NULL | Unique, PKEY |              |
+| company_name | text/varchar | NOT NULL |  |            |
+| workday_url | varchar(128) | NOT NULL | |                  |
+| careers_url | varchar(255) | NULLABLE | |                  |
+| ... | ... | ... | |
+
+applications
+| ColumnName | Type | Nullable | Relation | AddedInfo |
+| --------------- | --------------- | --------------- | --------------- | --------------- |
+| job_reqid | varchar(10) | NOT NULL | -- | Whatever their board uses as IDs for the job |
+| company_id | long | NOT NULL | FKEY(company) | this plus job_reqid should be unique |
+| title | varchar(80) | NOT NULL | -- | Job title |
+| status | BIT(2) | NOT NULL | -- | 4 states: applied = 0, rejected/not consideration = 1, processing = 2, ... = 3 |
+| applied | datetime | NOT NULL | -- | time of application |
+| updated | datetime | NOT NULL | -- | the time of the last change |
+
+company_reps? (not sure if I want)
+| ColumnName | Type | Nullable | Relation | AddedInfo |
+| --------------- | --------------- | --------------- | --------------- | --------------- |
+| company_id | long | NOT NULL | FKEY(company) | company they work for |
+| name | varchar(100) | NOT NULL | -- | who are they |
+| job_reqid | varchar(10) | NULLABLE | -- | what job did they contact me about? nullable|
+| email | varchar(320) | NOT NULL | -- | Whatever their board uses as IDs for the job |
+
+
 ### Future ideas
 ICIMS is also popular. Add that first.
 
