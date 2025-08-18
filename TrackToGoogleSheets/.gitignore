@@ -1,0 +1,17 @@
+# sensitive file locations
+app/tokens
+app/src/main/resources/*
+
+# log files, don't want random garbage upstream
+*.log
+
+# do I need to include eclipse files? no
+.settings/
+app/.settings/
+app/.classpath
+
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build

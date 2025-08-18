@@ -7,31 +7,18 @@ the "looking for reasonable jobs" part across existing sites, but I believe
 many of the big sites and career pages for specific companies have restrictions
 on bots or programs.
 
-## Pre-requisites
-*NOTE, NOT CURRENTLY ADAPTABLE TO OTHER SPREADSHEETS*
-For the spreadsheet pipeline, would need to change the spreadsheetId within ``SheetsQuickstart.java``.
+## Sub-project ideas
 
-Also in order to access Google Sheets, you need a proper ``credentials.json`` with client/secret for the app
-from google developer suite. This can be found at the link below:
+### [Push Information to Google Sheets](TrackToGoogleSheets/README.md)
+Move information located in a known database instance to Google Sheets (or 
+retrieve and pack from locations on the internet to upload to google sheets)
+(incomplete as of 8/18/2025)
 
-[Google Cloud Sheets API credentials dashboard](https://console.cloud.google.com/apis/api/sheets.googleapis.com/credentials)
+### [Workday login scan for Application information updates](WorkdayScan/README.md)
+Use my workday logins from a local encrypted login datastore to check for 
+updated application statuses (This should be triggered by external operations)
 
-## Build
+* Also includes some SQLite db file to use in other projects
+(incomplete as of 8/18/2025)
 
-I use gradle in this. To build, move into the ``TrackingSheet`` directory and build like below:
-
-```
-cd TrackingSheet
-./gradlew build
-
-```
-
-## Running
-*NOTE, NOT CURRENTLY ADAPTABLE TO OTHER SPREADSHEETS*
-
-Run with gradlew after building.
-
-```
-cd TrackingSheet
-./gradlew run
-```
+### ... more later
