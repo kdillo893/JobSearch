@@ -6,28 +6,84 @@ from selenium.webdriver.common.keys import Keys
 
 import sqlite3
 
+import time
+
 company_prefix = "discover"
 wd_ver = "wd5"
-APPS_DB = "applications.db"
+DB_FILE = "applications.db"
 
 if (company_prefix is None or company_prefix == ""
         or wd_ver is None or wd_ver == ""):
     exit(-1)
 
 
-def getAppDbConnection():
-    return sqlite3.connect(APPS_DB)
+# CompanyID to name/workday-prefix mapping, avoid repeated queries
+companyIdCache = {}
+
+type ResultsList = list[dict[str, str]]
+
+
+def executeQuery(dbFile, query, data=None) -> ResultsList:
+    '''
+    Given the sqlite db filename, attempt to open a connection and execute the
+    query. Straightforward query without parameters.
+    Returns None if the query didn't execute properly or the array of results
+    '''
+    res = None
+
+    con = sqlite3.connect(dbFile)
+    cursor = con.cursor()
+
+    try:
+        if data is None:
+            res = cursor.execute(query).fetchall()
+        else:
+            res = cursor.execute(query, data).fetchall()
+        con.commit()
+    finally:
+        # catch doesn't matter, we just want to ensure closure.
+        cursor.close()
+        con.close()
+
+    return res
+
+
+def executeQuerySingle(dbFile, query, data=None):
+    '''
+    Given the sqlite db filename, attempt to open a connection and execute the
+    query. Straightforward query without parameters.
+    Returns None if the query didn't execute properly or the single result
+    '''
+    res = None
+
+    con = sqlite3.connect(dbFile)
+    cursor = con.cursor()
+
+    try:
+        if data is None:
+            res = cursor.execute(query).fetchone()
+        else:
+            res = cursor.execute(query, data).fetchone()
+        con.commit()
+    finally:
+        # catch doesn't matter, we just want to ensure closure.
+        cursor.close()
+        con.close()
+
+    return res
 
 
 def tableExists(tableName):
-    con = getAppDbConnection()
-    cur = con.cursor()
+    res = executeQuerySingle(
+        DB_FILE,
+        "SELECT name FROM sqlite_schema WHERE tbl_name = \"applications\""
+    )
 
-    res = cur.execute(
-        "SELECT name FROM sqlite_schema WHERE tbl_name = ?", tableName)
-    name = res.fetchone()
-    con.close()
+    if res is None:
+        return False
 
+    name = res[0]
+    print(name)
     if (name == tableName):
         return True
 
@@ -35,17 +91,25 @@ def tableExists(tableName):
 
 
 def initJobsTableDB():
-    con = getAppDbConnection()
-    cur = con.cursor()
-    cur.execute('''CREATE TABLE IF NOT EXISTS
+    print("No applications.db file, creating it...")
+
+    # companies table
+    res = executeQuery(DB_FILE, """CREATE TABLE IF NOT EXISTS
                 companies(company_id NOT NULL, company_name, workday_prefix,
                         careers_url);
-            ''')
-    cur.execute('''CREATE TABLE IF NOT EXISTS
+            """)
+
+    if res is None:
+        print("ERROR creating companies table")
+
+    # applications table
+    res = executeQuery(DB_FILE, """CREATE TABLE IF NOT EXISTS
                 applications(job_reqid, company_id, title, status,
                         applied, updated, unique(job_reqid, company_id));
-            ''')
-    con.close()
+            """)
+    if res is None:
+        print("ERROR creating applications table")
+
     pass
 
 
@@ -73,54 +137,110 @@ def appStatusFromInt(appStatusInt):
 
 
 def writeApplicationsToDb(apps):
+    """
+    Begin to fire off writes of application info to database
+    """
+
+    print("Checking job applications table in sqlite file...")
+
+    # Check if the table exists first:
+    if not tableExists("applications"):
+        initJobsTableDB()
+        print("applications table created...")
 
     # with the array "apps", construct the sql statement for adding
     # 1. get db entries that match job_reqid and company_id of "apps" elements
 
-    query = "SELECT job_reqid, company_id FROM applications WHERE "
-    query += " OR ".join([f"job_reqid = {a["job_repid"]} AND company = {a["company"]}" for a in apps])
-    query += ";"
+    query = f"""SELECT job_reqid, company_id
+        FROM applications WHERE 
+          {" OR ".join(
+           [f"""job_reqid = \"{a["job_repid"]}\"
+                AND company_id = \"{getCompanyIdFromName(a["company"])}\""""
+            for a in apps])
+           }
+        ;"""
     print(query)
 
-    con = getAppDbConnection()
+    # validating the statement
     print(sqlite3.complete_statement(query))
 
-    # 2. filter out the from the apps list anything in the matched query
-    cur = con.cursor()
-    existing_companies = cur.execute(query);
+    # 2. query filter out the from the apps list anything in the matched query
+    existing_companies = executeQuery(DB_FILE, query)
 
-    con.close()
+    print("Writing new job applications to db...")
+    # TODO: incomplete
 
     pass
 
 
-def appInfoToDb(obj):
-    if isinstance(obj, dict):
-        # check for db file, append
-        con = getAppDbConnection()
-        cur = con.cursor()
+def getCompanyIdFromName(companyName):
+    """
+    Search company name cache for ID, and if not in cache query db for the ID
+    associated with the name of a company.
+    """
 
+    if companyName in companyIdCache:
+        return companyIdCache[companyName]
+
+    companyIdQuery = "SELECT company_id FROM companies WHERE company_name = ?"
+    res = executeQuerySingle(DB_FILE,
+                             companyIdQuery,
+                             (companyName,))
+
+    if res and len(res) > 0:
+        companyId = res[0]
+        companyIdCache[companyId]
+        print(f"added [{companyName}:{companyId}] to companyIdCache")
+
+    # none found, return none
+    return None
+
+
+def appInfoToDb(obj):
+    """
+    append application using related company and application info
+    """
+
+    if isinstance(obj, dict):
+
+        # TODO: next commit will do this check once rather than repeatedly.
         # if the "jobs" table doesn't exist, create it
         if not tableExists("applications"):
             initJobsTableDB()
 
-        companyRes = cur.execute(
-            "SELECT company_id FROM companies WHERE workday_prefix=?",
-            company_prefix)
+        prefixQuery = "SELECT company_id FROM companies WHERE workday_prefix=?;"
+        companyRes = executeQuerySingle(DB_FILE, prefixQuery, company_prefix)
         companyId = companyRes.fetchone()
 
+        if not companyId:
+            # create one with
+            pass
+
+        insertQuery = "INSERT INTO applications VALUES(?, ?, ?, ?, now(), now());"
         # table exists, insert a row
-        res = cur.execute("INSERT INTO applications VALUES(?, ?, ?, ?, now(), now());",
-                          obj["job_repid"], companyId, obj["title"], appStatusToInt(obj["status"]))
+        res = executeQuery(DB_FILE,
+                           insertQuery,
+                           (obj["job_repid"],
+                            companyId,
+                            obj["title"],
+                            appStatusToInt(obj["status"]))
+                           )
 
-        res.commit()
+        return res
 
-        con.close()
     pass
 
 
-def checkWorkdayApps(driver: webdriver.Chrome, company: str, wdver: str, creds):
-    url = f'https://{company}.{wdver}.myworkdayjobs.com/en-US/Discover/userHome'
+def checkWorkdayApps(driver: webdriver.Chrome,
+                     company: str,
+                     wdver: str,
+                     companyPath: str,
+                     creds):
+    """
+    Utilizing Selenium WebDriver, fetch application info from workday site
+    """
+
+    url = f'https://{company}.{wdver}.myworkdayjobs.com/en-US/{companyPath}/userHome'
     driver.get(url)
 
     # wait time for load?
@@ -153,6 +273,8 @@ def checkWorkdayApps(driver: webdriver.Chrome, company: str, wdver: str, creds):
 
         emailBox.send_keys("kdillo893@gmail.com")
         pwBox.send_keys("SECRET PASSWORD")
+
+        time.sleep(1)
         # TODO: for some reason the button is inactive for a few seconds
         print(clickFilter.is_enabled())
         clickFilter.click()
@@ -186,13 +308,16 @@ def checkWorkdayApps(driver: webdriver.Chrome, company: str, wdver: str, creds):
     print("At Candidate Home, trying to parse information about jobs")
 
     # Grab each <tr> with attribute data-automation-id="taskListRow"
-    # TODO
+    # TODO: parse table for rows, chunk out data from its text
 
-    yield {"job_repid": "R12345", "company": "Discover", "title": "SoftDev", "status": "Pending", "applied": 2024-11-22, "updated": 2024-11-22}
+    yield {"job_repid": "R12345", "company": "Discover",
+           "title": "SoftDev", "status": "Pending",
+           "applied": 2024-11-22, "updated": 2024-11-22}
 
 
 if __name__ == '__main__':
-    # TODO: have parms with pw store...
+    # TODO: have parms with pw store file details
+
     applications = [
         {"job_repid": "R12345", "company": "Discover", "title": "SoftDev",
             "status": "Pending", "applied": 2024-11-22, "updated": 2024-11-22},

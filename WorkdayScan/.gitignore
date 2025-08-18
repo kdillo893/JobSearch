@@ -3,3 +3,4 @@ venv
 
 # person-specific job db
 jobs.db
+*.db
