@@ -4,3 +4,6 @@ venv
 # person-specific job db
 jobs.db
 *.db
+
+# log files
+*.log
