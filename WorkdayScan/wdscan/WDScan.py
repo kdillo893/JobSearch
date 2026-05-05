@@ -11,7 +11,7 @@ from selenium.webdriver.common.keys import Keys
 
 from JobDB import initJobsDbFile, executeQuery, \
     executeQuerySingle, getAppStatusFromString, getExistingJobApps, \
-    DatabaseConfig
+    DatabaseConfig, insertApplication, insertCompany
 
 
 logger = logging.getLogger(__name__)
@@ -51,25 +51,21 @@ def writeJobappInfoToDb(jobApp):
     if isinstance(jobApp, dict):
         companyName = jobApp['company']
 
-        prefixQuery = "SELECT company_id FROM companies WHERE company = ?;"
-        companyRes = executeQuerySingle(prefixQuery, company_prefix)
-        companyId = companyRes.fetchone()
+        companyId = None;
+        if 'company_id' in jobApp:
+            companyId = jobApp['company_id']
 
         if not companyId:
-            # create one with name, put in cache
+            # TODO: create one in db with name, put in cache
+            # currently placeholder text
+            returnId = insertCompany(companyName, "testcomp", companyName, "https://company.com")
+            print(f"created company, id={returnId}")
             
+            companyId = returnId;
+
             pass
 
-        insertQuery = "INSERT INTO applications VALUES(?, ?, ?, ?, now(), now());"
-        # table exists, insert a row
-        res = executeQuery(insertQuery,
-                           (jobApp["job_repid"],
-                            companyId,
-                            jobApp["title"],
-                            getAppStatusFromString(jobApp["status"]))
-                           )
-
-        return res
+        return insertApplication(jobApp, companyId)
 
     pass
 

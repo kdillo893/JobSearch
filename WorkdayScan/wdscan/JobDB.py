@@ -1,9 +1,10 @@
 from enum import Enum
+import errno
+import os
 
 import sqlite3
 
 # classes, types, and cache structures
-
 
 class DatabaseConfig:
     """
@@ -33,21 +34,27 @@ class OpenConnection:
 
     _sqliteConnection: sqlite3.Connection | None = None
 
-    # add to list by query executed and the result of execution
-    executionResults: list[dict[str, tuple]] = None
+    # add query string and results of execution to list
+    executionResults: list[dict[str, tuple]] | None = None
 
     def __init__(self):
+        dbFile = DatabaseConfig.getDbFile()
+        if dbFile is None:
 
-        self._sqliteConnection = sqlite3.connect(DatabaseConfig.getDbFile())
+            return
+
+        self._sqliteConnection = sqlite3.connect(dbFile)
 
     def commitAndClose(self):
+        if self._sqliteConnection is None:
+            return
+
         self._sqliteConnection.commit()
         self._sqliteConnection.close()
         pass
 
 
 type ResultsList = list[dict[str, str]]
-
 
 _companyIdCache = {}
 
@@ -72,7 +79,7 @@ class companies:
     company_id: int  # pkey 1, not null
     company_name: str
     workday_prefix: str
-    company_path: str
+    company_path: str # path string workday, eg {prefix}.{baseUrl}/company_path
     careers_url: str
 
 
@@ -85,7 +92,7 @@ def initJobsDbFile():
     # companies table
     companiesTableCreateQuery = """CREATE TABLE IF NOT EXISTS
             companies(company_id NOT NULL, company_name, workday_prefix,
-                    careers_url);
+            company_path, careers_url);
         """
 
     # applications table
@@ -94,7 +101,11 @@ def initJobsDbFile():
             title, status, applied, updated, unique(job_reqid, company_id));
         """
 
-    con = sqlite3.connect(DatabaseConfig.getDbFile())
+    dbFile = DatabaseConfig.getDbFile();
+    if dbFile is None:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), "NoDbFileProvided")
+
+    con = sqlite3.connect(dbFile)
     print(con.autocommit)
 
     cursor = con.cursor()
@@ -109,15 +120,18 @@ def initJobsDbFile():
 
 # Basic execution queries
 
-def executeQuery(query, data: tuple | dict = None) -> ResultsList:
+def executeQuery(query, data: tuple | dict | None = None) -> ResultsList:
     '''
     Given the sqlite db filename, attempt to open a connection and execute a
     single query with multiple results.
     Returns None if didn't execute properly or desired array of results
     '''
     res = None
+    dbFile = DatabaseConfig.getDbFile()
+    if dbFile is None:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), "NoDbFileProvided")
 
-    con = sqlite3.connect(DatabaseConfig.getDbFile())
+    con = sqlite3.connect(dbFile)
     cursor = con.cursor()
 
     try:
@@ -134,7 +148,7 @@ def executeQuery(query, data: tuple | dict = None) -> ResultsList:
     return res
 
 
-def executeQuerySingle(query, data: tuple = None):
+def executeQuerySingle(query, data: tuple | None = None):
     '''
     Given the sqlite db filename, attempt to open a connecta
     query returning a single result.
@@ -142,7 +156,11 @@ def executeQuerySingle(query, data: tuple = None):
     '''
     res = None
 
-    con = sqlite3.connect(DatabaseConfig.getDbFile())
+    dbFile = DatabaseConfig.getDbFile()
+    if dbFile is None:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), "NoDbFileProvided")
+
+    con = sqlite3.connect(dbFile)
     cursor = con.cursor()
 
     try:
@@ -159,16 +177,22 @@ def executeQuerySingle(query, data: tuple = None):
     return res
 
 
+#todo, operate off oopening connections to the db instance so I don't need to 
+#   do the "connect" operation each time...
 def executeStatementWithConnection(connection: OpenConnection,
                                    query,
-                                   data: tuple = None):
+                                   data: tuple | None = None):
     """
     Using an open connection, execute statement and postpone commit.
     If there are results (ie insert and ID needs recording), OpenConnection
     object will store the list of results from each execution
     """
 
-    con = sqlite3.connect(DatabaseConfig.getDbFile())
+    dbFile = DatabaseConfig.getDbFile()
+    if dbFile is None:
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), "NoDbFileProvided")
+
+    con = sqlite3.connect(dbFile)
     cursor = con.cursor()
     try:
         if data is None:
@@ -235,14 +259,27 @@ def appStatusFromInt(appStatusInt):
 # Common Queries
 
 def getExistingJobApps(apps):
-    query = f"""SELECT job_reqid, company_id
-        FROM applications WHERE 
-          {" OR ".join(
-           [f"""job_reqid = \"{a["job_repid"]}\"
-                AND company_id = \"{getCompanyIdFromName(a["company"])}\""""
-            for a in apps])
-           }
-        ;"""
+    """
+    Based on the input array @apps with job id and company id, search for
+    entries in the applications table with matching ID and return the entry
+    with the unique IDs.
+    ... this seems useless.
+    """
+    # whereString = ""
+    # if len(apps) > 0:
+    #     whereString = " WHERE "
+    #
+    # appsQueryClauses = [f"""job_reqid = \"{a["job_repid"]}\"
+    #                     AND company_id = \"{getCompanyIdFromName(a["company"])}\""""
+    #                     for a in apps]
+    # whereClauses = " OR ".join(appsQueryClauses)
+
+    query = """SELECT job_reqid, company_id FROM applications;"""
+    # query = """SELECT job_reqid, company_id FROM applications {} {};"""\
+    # .format(
+    #     whereString,
+    #     whereClauses)
+
     print(query)
 
     # validating the statement
@@ -250,6 +287,67 @@ def getExistingJobApps(apps):
 
     # 2. query filter out the from the apps list anything in the matched query
     existingJobApps = executeQuery(query)
+
+    return existingJobApps
+
+
+def insertCompany(companyName, workdayPrefix, companyPath, careersUrl):
+    """
+    Insert a new company into the companies table, returning the new ID
+    """
+
+    # do a single select to get the highest company id, then increment.
+    # this should need locking in the future or "cross process" communication
+    # if it's not just this program running.
+    getLargestCompanyIdQuery = """SELECT MAX(company_id) FROM companies;"""
+    companyIdRes = executeQuerySingle(getLargestCompanyIdQuery)
+    companyId = 1
+    if companyIdRes and len(companyIdRes) > 0:
+        #could be either faulty execution OR no entries...
+        returnId = companyIdRes[0]
+        if returnId is not None:
+            companyId = int(companyIdRes[0]) + 1
+
+
+    insertCompanyQuery = """INSERT INTO companies(company_id, company_name, workday_prefix,
+                    company_path, careers_url)
+                    VALUES(?, ?, ?, ?, ?) RETURNING company_id;"""
+
+    res = executeQuerySingle(insertCompanyQuery,
+                             (companyId, companyName, workdayPrefix,
+                              companyPath, careersUrl)
+                             )
+
+    if res and len(res) > 0:
+        companyId = res[0]
+        _companyIdCache[companyName] = companyId
+        print(f"added [{companyName}:{companyId}] to companyIdCache")
+        return companyId
+
+    return None
+
+
+def insertApplication(jobApp, companyId):
+    """
+    Insert new job app entry into applications table, return the ID
+    """
+
+    insertQuery = "INSERT INTO applications VALUES(?, ?, ?, ?, date('now'), date('now'));"
+
+    # table exists, insert a row
+    res = executeQuery(insertQuery,
+                       (jobApp["job_repid"],
+                        companyId,
+                        jobApp["title"],
+                        getAppStatusFromString(jobApp["status"]).value)
+                       )
+
+    if res and len(res) > 0:
+        #applicationId = res[0]
+        #print(f"added application [{job_repid}] to db")
+        return res
+
+    return None
 
 
 def getCompanyIdFromName(companyName):
@@ -262,7 +360,8 @@ def getCompanyIdFromName(companyName):
     if companyName in _companyIdCache:
         return _companyIdCache[companyName]
 
-    res = getCompanyIdByName(companyName)
+    print("querying for " + companyName)
+    res = queryCompanyIdByName(companyName)
 
     if res and len(res) > 0:
         companyId = res[0]
@@ -273,6 +372,6 @@ def getCompanyIdFromName(companyName):
     return None
 
 
-def getCompanyIdByName(companyName):
+def queryCompanyIdByName(companyName):
     companyIdQuery = "SELECT company_id FROM companies WHERE company_name = ?"
-    return executeQuerySingle(companyIdQuery, [companyName])
+    return executeQuerySingle(companyIdQuery, (companyName, ))
